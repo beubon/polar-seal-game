@@ -13,7 +13,7 @@
       -webkit-tap-highlight-color: transparent;
     }
     body {
-      background: #0e1e32; /* Sáng hơn một chút so với #0a1628 */
+      background: #0e1e32;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -416,7 +416,7 @@
 
 <div class="modal-overlay" id="leaderboardModal">
   <div class="modal">
-    <h2>🏆 Leaderboard</h2>
+    <h2>🏆 Global Leaderboard</h2>
     <table>
       <thead><tr><th>#</th><th>Name</th><th>Score</th><th>Date</th></tr></thead>
       <tbody id="leaderboardBody"></tbody>
@@ -426,8 +426,15 @@
 </div>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script>
-  // ====== SNOWFALL EFFECT WITH CUSTOM ICON ======
+<script type="module">
+  // ====== SUPABASE CONFIGURATION ======
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+  
+  const SUPABASE_URL = 'https://oytaifzqzqxnaphcdlhq.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_xjmBMX1owZpVnRzlizJwKw_y_mUiUOP';
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ====== SNOWFALL EFFECT ======
   const CUSTOM_ICON_URL = 'https://i.postimg.cc/xdD7q99M/1.png';
 
   function createSnowflakes() {
@@ -474,10 +481,10 @@
     tg.ready();
     tg.expand();
     if (tg.initDataUnsafe?.user) {
-      currentUser.name = tg.initDataUnsafe.user.first_name || tg.initDataUnsafe.user.username || 'Explorer';
+      currentUser.name = tg.initDataUnsafe.user.first_name || tg.initDataUnsafe.user.username || 'Player';
       currentUser.id = tg.initDataUnsafe.user.id;
     } else {
-      currentUser.name = 'Arctic Explorer';
+      currentUser.name = 'TG Player';
     }
   } else {
     const saved = localStorage.getItem('polarseal_user');
@@ -492,19 +499,15 @@
   }
   document.getElementById('playerDisplay').textContent = '👤 ' + currentUser.name;
 
-  // ====== GAME SETTINGS ======
+  // ====== GAME SETTINGS (Dynamic Difficulty) ======
   const GRID_SIZE = 9;
-  const GAME_TIME = 60;
-  const BOMB_CHANCE = 0.2;
-  const SPAWN_INTERVAL_MS = 750;
-  const MIN_HIDE_TIME = 700;
-  const MAX_HIDE_TIME = 1100;
+  const GAME_TIME = 60; // seconds
 
   let score = 0;
   let timeLeft = GAME_TIME;
   let gameActive = false;
   let timerInterval = null;
-  let spawnInterval = null;
+  let spawnTimeout = null;
   let currentMole = null;
   let hideTimeout = null;
 
@@ -514,6 +517,24 @@
   const startBtn = document.getElementById('startBtn');
   const gridContainer = document.getElementById('gridContainer');
   const gameWrapper = document.getElementById('gameWrapper');
+
+  // Difficulty parameters based on remaining time
+  function getDifficultyParams() {
+    const t = timeLeft;
+    // Spawn interval: starts at 900ms (easy) → 400ms (hard) as time decreases
+    const spawnInterval = Math.max(400, 900 - (GAME_TIME - t) * (500 / GAME_TIME));
+    // Hide time range: min starts 800ms → 400ms, max starts 1200ms → 700ms
+    const minHide = Math.max(400, 800 - (GAME_TIME - t) * (400 / GAME_TIME));
+    const maxHide = Math.max(700, 1200 - (GAME_TIME - t) * (500 / GAME_TIME));
+    // Bomb chance: 20% initially, increases to 35% in last 20 seconds
+    let bombChance = 0.2;
+    if (t <= 20) {
+      bombChance = 0.35;
+    } else if (t <= 40) {
+      bombChance = 0.25;
+    }
+    return { spawnInterval, minHide, maxHide, bombChance };
+  }
 
   // Create 3x3 grid
   const cells = [];
@@ -552,12 +573,22 @@
     }
   }
 
+  function scheduleNextSpawn() {
+    if (!gameActive) return;
+    const { spawnInterval } = getDifficultyParams();
+    spawnTimeout = setTimeout(() => {
+      spawnMole();
+      scheduleNextSpawn();
+    }, spawnInterval);
+  }
+
   function spawnMole() {
     if (!gameActive) return;
     clearCurrentMole();
 
+    const { minHide, maxHide, bombChance } = getDifficultyParams();
     const index = Math.floor(Math.random() * GRID_SIZE);
-    const isBomb = Math.random() < BOMB_CHANCE;
+    const isBomb = Math.random() < bombChance;
     const type = isBomb ? 'bomb' : 'seal';
     const imageUrl = isBomb ? BOMB_IMAGE_URL : SEAL_IMAGE_URL;
 
@@ -566,9 +597,9 @@
     cellObj.img.src = imageUrl;
     currentMole = { index, type };
 
-    const duration = MIN_HIDE_TIME + Math.random() * (MAX_HIDE_TIME - MIN_HIDE_TIME);
+    const duration = minHide + Math.random() * (maxHide - minHide);
     hideTimeout = setTimeout(() => {
-      if (currentMole && currentMole.index === index) {
+      if (currentMole && currentMole.index === index && gameActive) {
         clearCurrentMole();
       }
     }, duration);
@@ -582,10 +613,15 @@
       scoreEl.textContent = score;
       if (navigator.vibrate) navigator.vibrate(30);
       clearCurrentMole();
+      // Immediately spawn next mole (optional for more action)
+      // We'll let the schedule continue; but we can also call spawnMole() now to avoid waiting
+      // But be careful with overlapping setTimeouts. Better: clear schedule and re-schedule?
+      // I'll just stick with the existing schedule, but clear hideTimeout anyway.
     } else {
+      // Bomb hit -> game over
       gameActive = false;
       clearInterval(timerInterval);
-      clearInterval(spawnInterval);
+      clearTimeout(spawnTimeout);
       clearCurrentMole();
       if (navigator.vibrate) navigator.vibrate(300);
       gameWrapper.classList.add('shake');
@@ -594,9 +630,9 @@
       messageEl.textContent = '💥 BOOM! The bomb exploded! Game Over.';
       startBtn.style.display = 'block';
 
-      setTimeout(() => {
-        saveScore(score);
-        showLeaderboard();
+      setTimeout(async () => {
+        await saveScoreToSupabase(currentUser.name, score);
+        await showGlobalLeaderboard();
       }, 1000);
     }
   }
@@ -615,18 +651,20 @@
     timerInterval = setInterval(() => {
       timeLeft--;
       timerEl.textContent = timeLeft;
-      if (timeLeft <= 0) endGame(false);
+      if (timeLeft <= 0) {
+        endGame(false);
+      }
     }, 1000);
 
-    clearInterval(spawnInterval);
-    spawnInterval = setInterval(spawnMole, SPAWN_INTERVAL_MS);
-    spawnMole();
+    clearTimeout(spawnTimeout);
+    // Start spawning
+    scheduleNextSpawn();
   }
 
-  function endGame(byBomb = false) {
+  async function endGame(byBomb = false) {
     gameActive = false;
     clearInterval(timerInterval);
-    clearInterval(spawnInterval);
+    clearTimeout(spawnTimeout);
     clearCurrentMole();
     startBtn.style.display = 'block';
 
@@ -635,51 +673,39 @@
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
     }
 
-    saveScore(score);
-    setTimeout(() => showLeaderboard(), 600);
+    await saveScoreToSupabase(currentUser.name, score);
+    setTimeout(async () => await showGlobalLeaderboard(), 600);
   }
 
-  // ====== LEADERBOARD ======
-  const LEADERBOARD_KEY = 'polarseal_leaderboard';
-
-  function defaultData() {
-    return [
-      { name: '🐧 IceKing', score: 52, date: '2025-05-10' },
-      { name: '🐻‍❄️ Frosty', score: 44, date: '2025-05-09' },
-      { name: '🦭 ArcticFox', score: 39, date: '2025-05-11' },
-      { name: '🐟 Narwhal', score: 33, date: '2025-05-08' },
-      { name: '🦈 Glacier', score: 28, date: '2025-05-12' }
-    ];
+  // ====== SUPABASE FUNCTIONS ======
+  async function saveScoreToSupabase(username, score) {
+    const { error } = await supabase
+      .from('leaderboard')
+      .insert({ username: username, score: score });
+    if (error) console.error('Error saving score:', error);
   }
 
-  function loadLeaderboard() {
-    const data = localStorage.getItem(LEADERBOARD_KEY);
-    return data ? JSON.parse(data) : defaultData();
+  async function getGlobalLeaderboard() {
+    const { data, error } = await supabase
+      .from('leaderboard')
+      .select('username, score, created_at')
+      .order('score', { ascending: false })
+      .limit(10);
+    if (error) {
+      console.error('Error fetching leaderboard:', error);
+      return [];
+    }
+    return data;
   }
 
-  function saveLeaderboard(list) {
-    localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(list));
-  }
-
-  function saveScore(newScore) {
-    const list = loadLeaderboard();
-    list.push({
-      name: currentUser.name,
-      score: newScore,
-      date: new Date().toISOString().slice(0, 10)
-    });
-    list.sort((a, b) => b.score - a.score);
-    saveLeaderboard(list.slice(0, 20));
-  }
-
-  function renderLeaderboard() {
-    const list = loadLeaderboard().slice(0, 10);
+  // ====== RENDER LEADERBOARD ======
+  function renderLeaderboard(leaderboardData) {
     const tbody = document.getElementById('leaderboardBody');
     tbody.innerHTML = '';
-    list.forEach((entry, i) => {
+    leaderboardData.forEach((entry, i) => {
       const rank = i + 1;
       const tr = document.createElement('tr');
-      if (entry.name === currentUser.name && entry.score === score) {
+      if (entry.username === currentUser.name && entry.score === score) {
         tr.classList.add('highlight');
       }
       let medal = '';
@@ -687,13 +713,15 @@
       else if (rank === 2) medal = '🥈';
       else if (rank === 3) medal = '🥉';
       else medal = rank;
-      tr.innerHTML = `<td>${medal}</td><td>${entry.name}</td><td><strong>${entry.score}</strong></td><td>${entry.date}</td>`;
+      const date = new Date(entry.created_at).toLocaleDateString();
+      tr.innerHTML = `<td>${medal}</td><td>${entry.username}</td><td><strong>${entry.score}</strong></td><td>${date}</td>`;
       tbody.appendChild(tr);
     });
   }
 
-  function showLeaderboard() {
-    renderLeaderboard();
+  async function showGlobalLeaderboard() {
+    const data = await getGlobalLeaderboard();
+    renderLeaderboard(data);
     document.getElementById('leaderboardModal').style.display = 'flex';
   }
 
@@ -701,7 +729,9 @@
     document.getElementById('leaderboardModal').style.display = 'none';
   }
 
-  document.getElementById('leaderboardBtn').addEventListener('click', showLeaderboard);
+  document.getElementById('leaderboardBtn').addEventListener('click', async () => {
+    await showGlobalLeaderboard();
+  });
   document.getElementById('closeModalBtn').addEventListener('click', hideLeaderboard);
   document.getElementById('leaderboardModal').addEventListener('click', function(e) {
     if (e.target === this) hideLeaderboard();
