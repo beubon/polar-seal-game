@@ -405,7 +405,7 @@
     <div class="player-tag" id="playerDisplay">👤 Guest</div>
     <div class="stats">
       <div class="score-box">❄️ SCORE <span id="scoreDisplay">0</span></div>
-      <div class="timer-box">⏱️ <span id="timerDisplay">60</span>s</div>
+      <div class="timer-box">⏱️ <span id="timerDisplay">40</span>s</div>
     </div>
   </div>
   <div class="grid" id="gridContainer"></div>
@@ -418,7 +418,7 @@
   <div class="modal">
     <h2>🏆 Global Leaderboard</h2>
     <table>
-      <thead><tr><th>#</th><th>Name</th><th>Score</th><th>Date</th></tr></thead>
+      <thead><tr><th>#</th><th>Name</th><th>Score</th></tr></thead>
       <tbody id="leaderboardBody"></tbody>
     </table>
     <button class="close-btn" id="closeModalBtn">CLOSE</button>
@@ -499,9 +499,9 @@
   }
   document.getElementById('playerDisplay').textContent = '👤 ' + currentUser.name;
 
-  // ====== GAME SETTINGS (Dynamic Difficulty) ======
+  // ====== GAME SETTINGS (HARD MODE: x2 difficulty, 40s) ======
   const GRID_SIZE = 9;
-  const GAME_TIME = 60; // seconds
+  const GAME_TIME = 40; // 40 giây
 
   let score = 0;
   let timeLeft = GAME_TIME;
@@ -518,21 +518,18 @@
   const gridContainer = document.getElementById('gridContainer');
   const gameWrapper = document.getElementById('gameWrapper');
 
-  // Difficulty parameters based on remaining time
+  // Hàm lấy tham số độ khó theo thời gian còn lại - phiên bản KHÓ GẤP ĐÔI
   function getDifficultyParams() {
     const t = timeLeft;
-    // Spawn interval: starts at 900ms (easy) → 400ms (hard) as time decreases
-    const spawnInterval = Math.max(400, 900 - (GAME_TIME - t) * (500 / GAME_TIME));
-    // Hide time range: min starts 800ms → 400ms, max starts 1200ms → 700ms
-    const minHide = Math.max(400, 800 - (GAME_TIME - t) * (400 / GAME_TIME));
-    const maxHide = Math.max(700, 1200 - (GAME_TIME - t) * (500 / GAME_TIME));
-    // Bomb chance: 20% initially, increases to 35% in last 20 seconds
-    let bombChance = 0.2;
-    if (t <= 20) {
-      bombChance = 0.35;
-    } else if (t <= 40) {
-      bombChance = 0.25;
-    }
+    // Spawn interval: từ 450ms -> 200ms (nhanh hơn nhiều)
+    const spawnInterval = Math.max(200, 450 - (GAME_TIME - t) * (250 / GAME_TIME));
+    // Hide time: min từ 350ms -> 150ms, max từ 600ms -> 300ms
+    const minHide = Math.max(150, 350 - (GAME_TIME - t) * (200 / GAME_TIME));
+    const maxHide = Math.max(300, 600 - (GAME_TIME - t) * (300 / GAME_TIME));
+    // Bomb chance: bắt đầu 30%, sau 20s là 45%, 10s cuối 60%
+    let bombChance = 0.3;
+    if (t <= 10) bombChance = 0.6;
+    else if (t <= 20) bombChance = 0.45;
     return { spawnInterval, minHide, maxHide, bombChance };
   }
 
@@ -613,10 +610,6 @@
       scoreEl.textContent = score;
       if (navigator.vibrate) navigator.vibrate(30);
       clearCurrentMole();
-      // Immediately spawn next mole (optional for more action)
-      // We'll let the schedule continue; but we can also call spawnMole() now to avoid waiting
-      // But be careful with overlapping setTimeouts. Better: clear schedule and re-schedule?
-      // I'll just stick with the existing schedule, but clear hideTimeout anyway.
     } else {
       // Bomb hit -> game over
       gameActive = false;
@@ -657,7 +650,6 @@
     }, 1000);
 
     clearTimeout(spawnTimeout);
-    // Start spawning
     scheduleNextSpawn();
   }
 
@@ -688,33 +680,35 @@
   async function getGlobalLeaderboard() {
     const { data, error } = await supabase
       .from('leaderboard')
-      .select('username, score, created_at')
+      .select('username, score')
       .order('score', { ascending: false })
       .limit(10);
     if (error) {
       console.error('Error fetching leaderboard:', error);
       return [];
     }
-    return data;
+    return data || [];
   }
 
-  // ====== RENDER LEADERBOARD ======
   function renderLeaderboard(leaderboardData) {
     const tbody = document.getElementById('leaderboardBody');
     tbody.innerHTML = '';
+    if (!leaderboardData || leaderboardData.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;">No players yet</td></tr>';
+      return;
+    }
     leaderboardData.forEach((entry, i) => {
-      const rank = i + 1;
       const tr = document.createElement('tr');
       if (entry.username === currentUser.name && entry.score === score) {
         tr.classList.add('highlight');
       }
       let medal = '';
+      const rank = i + 1;
       if (rank === 1) medal = '🥇';
       else if (rank === 2) medal = '🥈';
       else if (rank === 3) medal = '🥉';
       else medal = rank;
-      const date = new Date(entry.created_at).toLocaleDateString();
-      tr.innerHTML = `<td>${medal}</td><td>${entry.username}</td><td><strong>${entry.score}</strong></td><td>${date}</td>`;
+      tr.innerHTML = `<td>${medal}</td><td>${entry.username}</td><td><strong>${entry.score}</strong></td>`;
       tbody.appendChild(tr);
     });
   }
