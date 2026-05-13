@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, maximum-scale=1.0">
+  <title>POLAR SEAL GAME (BETA) - Telegram Mini App</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background: #0e1e32; /* Sáng hơn một chút so với #0a1628 */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      touch-action: manipulation;
+      overflow-y: auto;
+      position: relative;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: 
+        radial-gradient(ellipse at 20% 80%, rgba(100, 200, 255, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(150, 220, 255, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(50, 150, 200, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .snowflakes {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .snowflake {
+      position: absolute;
+      top: -10%;
+      color: white;
+      font-size: 1rem;
+      animation: snowfall linear infinite;
+      opacity: 0.7;
+    }
+    .snowflake-img {
+      position: absolute;
+      top: -10%;
+      animation: snowfall-img linear infinite;
+      pointer-events: none;
+      opacity: 0.8;
+    }
+    @keyframes snowfall {
+      0% { transform: translateY(-10vh) rotate(0deg); }
+      100% { transform: translateY(110vh) rotate(360deg); }
+    }
+    @keyframes snowfall-img {
+      0% { transform: translateY(-10vh) rotate(0deg); }
+      100% { transform: translateY(110vh) rotate(360deg); }
+    }
+    .game-wrapper {
+      width: 100%;
+      max-width: 420px;
+      background: linear-gradient(180deg, 
+        rgba(20, 45, 80, 0.95) 0%, 
+        rgba(30, 60, 100, 0.95) 30%,
+        rgba(35, 70, 110, 0.95) 60%,
+        rgba(20, 45, 80, 0.95) 100%);
+      border-radius: 28px;
+      padding: 16px 16px 20px;
+      box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.6),
+        0 0 50px rgba(100, 180, 255, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+      border: 2px solid rgba(120, 200, 255, 0.4);
+      overflow: hidden;
+    }
+    .game-wrapper::before {
+      content: '';
+      position: absolute;
+      bottom: -20px;
+      left: -10%;
+      right: -10%;
+      height: 100px;
+      background: linear-gradient(180deg, 
+        transparent 0%, 
+        rgba(200, 230, 255, 0.15) 20%,
+        rgba(180, 210, 240, 0.2) 40%,
+        rgba(150, 200, 230, 0.25) 60%,
+        rgba(120, 180, 220, 0.3) 80%,
+        rgba(100, 160, 210, 0.35) 100%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .game-wrapper::after {
+      content: '';
+      position: absolute;
+      top: -30px;
+      left: -20%;
+      right: -20%;
+      height: 80px;
+      background: 
+        radial-gradient(ellipse at 30% 50%, rgba(0, 255, 150, 0.12) 0%, transparent 60%),
+        radial-gradient(ellipse at 70% 50%, rgba(100, 200, 255, 0.15) 0%, transparent 60%),
+        radial-gradient(ellipse at 50% 30%, rgba(150, 100, 255, 0.1) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(10px);
+    }
+    .brand {
+      width: 100%;
+      text-align: center;
+      font-size: 1.3rem;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      background: linear-gradient(180deg, #ffffff 0%, #c0e8ff 30%, #80c8f0 60%, #50a8d0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 0 25px rgba(150, 220, 255, 0.7), 0 2px 4px rgba(0, 0, 0, 0.4);
+      position: relative;
+      z-index: 2;
+      white-space: nowrap;
+    }
+    .brand .beta {
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #ff6b6b, #da3633);
+      -webkit-background-clip: unset;
+      -webkit-text-fill-color: white;
+      background-clip: unset;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      padding: 2px 8px;
+      border-radius: 12px;
+      margin-left: 4px;
+      vertical-align: middle;
+      box-shadow: 0 2px 8px rgba(255, 60, 60, 0.3);
+    }
+    .header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #e0f0ff;
+      font-weight: bold;
+      font-size: 0.85rem;
+      flex-wrap: wrap;
+      gap: 6px;
+      position: relative;
+      z-index: 2;
+    }
+    .player-tag {
+      background: rgba(30, 60, 100, 0.7);
+      padding: 7px 12px;
+      border-radius: 16px;
+      font-size: 0.85rem;
+      max-width: 30%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border: 1px solid rgba(150, 210, 255, 0.5);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+    }
+    .stats {
+      display: flex;
+      gap: 6px;
+    }
+    .score-box, .timer-box {
+      background: rgba(30, 60, 100, 0.7);
+      padding: 7px 12px;
+      border-radius: 16px;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 700;
+      border: 1px solid rgba(150, 210, 255, 0.5);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      color: #d0e8ff;
+    }
+    .timer-box {
+      color: #ffb8b0;
+      border-color: rgba(255, 130, 120, 0.4);
+    }
+    .message {
+      color: #d0e8ff;
+      font-size: 0.9rem;
+      text-align: center;
+      min-height: 20px;
+      font-weight: 500;
+      position: relative;
+      z-index: 2;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      width: 100%;
+      position: relative;
+      z-index: 2;
+    }
+    .cell {
+      aspect-ratio: 1 / 1;
+      background: rgba(25, 55, 90, 0.85);
+      border-radius: 16px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.1s ease, background 0.2s, box-shadow 0.2s;
+      box-shadow: 
+        0 4px 0 rgba(10, 25, 45, 0.7),
+        inset 0 2px 4px rgba(255, 255, 255, 0.08),
+        0 0 15px rgba(100, 180, 255, 0.15);
+      overflow: hidden;
+      border: 2px solid rgba(120, 200, 255, 0.4);
+    }
+    .cell::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 30%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+      border-radius: 14px 14px 0 0;
+      pointer-events: none;
+    }
+    .cell:active {
+      transform: scale(0.93);
+    }
+    .cell img {
+      display: none;
+      max-width: 85%;
+      max-height: 85%;
+      object-fit: contain;
+      pointer-events: none;
+      position: absolute;
+      transition: transform 0.1s;
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6));
+      z-index: 1;
+    }
+    .cell.active img {
+      display: block;
+      animation: popIn 0.25s ease;
+    }
+    .cell.seal {
+      background: rgba(40, 120, 220, 0.9);
+      box-shadow: 
+        0 4px 0 rgba(15, 50, 110, 0.8),
+        inset 0 2px 4px rgba(255, 255, 255, 0.12),
+        0 0 25px rgba(100, 180, 255, 0.4);
+      border-color: rgba(140, 220, 255, 0.7);
+    }
+    .cell.bomb {
+      background: rgba(220, 50, 50, 0.9);
+      box-shadow: 
+        0 4px 0 rgba(110, 20, 20, 0.8),
+        inset 0 2px 4px rgba(255, 255, 255, 0.1),
+        0 0 25px rgba(255, 60, 60, 0.4);
+      border-color: rgba(255, 120, 120, 0.7);
+    }
+    @keyframes popIn {
+      0% { transform: scale(0.3); opacity: 0; }
+      70% { transform: scale(1.08); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .btn {
+      background: linear-gradient(180deg, #4a8cc0 0%, #2a5a8a 100%);
+      border: none;
+      color: white;
+      font-weight: bold;
+      font-size: 1.3rem;
+      padding: 12px 0;
+      border-radius: 30px;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      border-bottom: 4px solid #1a3a5a;
+      letter-spacing: 1px;
+      box-shadow: 0 4px 15px rgba(80, 150, 220, 0.4);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+      position: relative;
+      z-index: 2;
+    }
+    .btn:active {
+      background: linear-gradient(180deg, #3a6aa0 0%, #1a4a6a 100%);
+      transform: translateY(2px);
+      border-bottom-width: 2px;
+      box-shadow: 0 2px 8px rgba(80, 150, 220, 0.3);
+    }
+    .btn.secondary {
+      background: rgba(30, 60, 100, 0.7);
+      border: 1px solid rgba(150, 210, 255, 0.5);
+      border-bottom: 4px solid #1a2e44;
+      margin-top: -6px;
+      font-size: 1rem;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    .btn.secondary:active {
+      background: rgba(40, 70, 110, 0.8);
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 20px;
+      backdrop-filter: blur(5px);
+    }
+    .modal {
+      background: linear-gradient(180deg, rgba(25, 50, 80, 0.98) 0%, rgba(15, 35, 60, 0.98) 100%);
+      border-radius: 24px;
+      padding: 24px;
+      width: 100%;
+      max-width: 380px;
+      color: #e0f0ff;
+      text-align: center;
+      border: 2px solid rgba(120, 200, 255, 0.5);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(100, 180, 255, 0.2);
+    }
+    .modal h2 {
+      margin-bottom: 20px;
+      font-size: 1.7rem;
+      color: #d0e8ff;
+      text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 24px;
+    }
+    th, td {
+      padding: 10px 8px;
+      border-bottom: 1px solid rgba(150, 210, 255, 0.2);
+    }
+    th {
+      background: rgba(40, 70, 110, 0.6);
+      font-weight: 600;
+      color: #c0e0ff;
+    }
+    .highlight {
+      background: rgba(50, 120, 200, 0.4);
+      font-weight: bold;
+      border-radius: 4px;
+    }
+    .close-btn {
+      background: linear-gradient(180deg, #da3633, #8b1a1a);
+      border: none;
+      color: white;
+      padding: 12px 36px;
+      border-radius: 30px;
+      font-weight: bold;
+      font-size: 1.1rem;
+      cursor: pointer;
+      border-bottom: 3px solid #5a0d0d;
+      transition: transform 0.1s;
+      box-shadow: 0 4px 12px rgba(200, 40, 40, 0.3);
+    }
+    .close-btn:active {
+      transform: translateY(2px);
+      border-bottom-width: 1px;
+    }
+
+    .shake {
+      animation: shake 0.5s ease;
+    }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(6px); }
+      100% { transform: translateX(0); }
+    }
+  </style>
+</head>
+<body>
+<div class="snowflakes" id="snowflakes"></div>
+
+<div class="game-wrapper" id="gameWrapper">
+  <div class="brand">
+    🧊 POLAR SEAL GAME <span class="beta">BETA</span>
+  </div>
+  <div class="header">
+    <div class="player-tag" id="playerDisplay">👤 Guest</div>
+    <div class="stats">
+      <div class="score-box">❄️ SCORE <span id="scoreDisplay">0</span></div>
+      <div class="timer-box">⏱️ <span id="timerDisplay">60</span>s</div>
+    </div>
+  </div>
+  <div class="grid" id="gridContainer"></div>
+  <div class="message" id="messageText">Press "START" to hunt seals!</div>
+  <button class="btn" id="startBtn">▶ START HUNTING</button>
+  <button class="btn secondary" id="leaderboardBtn">🏆 Leaderboard</button>
+</div>
+
+<div class="modal-overlay" id="leaderboardModal">
+  <div class="modal">
+    <h2>🏆 Leaderboard</h2>
+    <table>
+      <thead><tr><th>#</th><th>Name</th><th>Score</th><th>Date</th></tr></thead>
+      <tbody id="leaderboardBody"></tbody>
+    </table>
+    <button class="close-btn" id="closeModalBtn">CLOSE</button>
+  </div>
+</div>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+  // ====== SNOWFALL EFFECT WITH CUSTOM ICON ======
+  const CUSTOM_ICON_URL = 'https://i.postimg.cc/xdD7q99M/1.png';
+
+  function createSnowflakes() {
+    const container = document.getElementById('snowflakes');
+    const snowflakeChars = ['❄', '❅', '❆', '✦', '•', '·'];
+    
+    for (let i = 0; i < 30; i++) {
+      const span = document.createElement('span');
+      span.className = 'snowflake';
+      span.textContent = snowflakeChars[Math.floor(Math.random() * snowflakeChars.length)];
+      span.style.left = Math.random() * 100 + '%';
+      span.style.fontSize = (Math.random() * 1.2 + 0.5) + 'rem';
+      span.style.animationDuration = (Math.random() * 8 + 6) + 's';
+      span.style.animationDelay = Math.random() * 8 + 's';
+      span.style.opacity = Math.random() * 0.5 + 0.2;
+      container.appendChild(span);
+    }
+
+    for (let i = 0; i < 15; i++) {
+      const img = document.createElement('img');
+      img.className = 'snowflake-img';
+      img.src = CUSTOM_ICON_URL;
+      img.alt = 'snowflake icon';
+      img.style.left = Math.random() * 100 + '%';
+      img.style.width = (Math.random() * 24 + 16) + 'px';
+      img.style.height = 'auto';
+      img.style.animationDuration = (Math.random() * 10 + 8) + 's';
+      img.style.animationDelay = Math.random() * 10 + 's';
+      img.style.opacity = Math.random() * 0.4 + 0.4;
+      container.appendChild(img);
+    }
+  }
+  createSnowflakes();
+
+  // ====== IMAGES ======
+  const SEAL_IMAGE_URL = 'https://i.postimg.cc/x1Z5z9Ts/Untitled-design-(5).png';
+  const BOMB_IMAGE_URL = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="45" fill="%23222" stroke="%23ff4444" stroke-width="4"/%3E%3Ccircle cx="50" cy="50" r="35" fill="%23333"/%3E%3Crect x="45" y="15" width="10" height="20" fill="%23ffaa00" rx="4"/%3E%3Ctext x="50" y="65" font-size="40" text-anchor="middle" fill="%23ff4444"%3E💣%3C/text%3E%3C/svg%3E';
+
+  // ====== TELEGRAM INTEGRATION ======
+  const tg = window.Telegram?.WebApp;
+  let currentUser = { name: 'Guest', id: null };
+
+  if (tg) {
+    tg.ready();
+    tg.expand();
+    if (tg.initDataUnsafe?.user) {
+      currentUser.name = tg.initDataUnsafe.user.first_name || tg.initDataUnsafe.user.username || 'Explorer';
+      currentUser.id = tg.initDataUnsafe.user.id;
+    } else {
+      currentUser.name = 'Arctic Explorer';
+    }
+  } else {
+    const saved = localStorage.getItem('polarseal_user');
+    if (saved) currentUser.name = saved;
+    else {
+      const input = prompt('Enter your explorer name:');
+      if (input && input.trim()) {
+        currentUser.name = input.trim();
+        localStorage.setItem('polarseal_user', currentUser.name);
+      }
+    }
+  }
+  document.getElementById('playerDisplay').textContent = '👤 ' + currentUser.name;
+
+  // ====== GAME SETTINGS ======
+  const GRID_SIZE = 9;
+  const GAME_TIME = 60;
+  const BOMB_CHANCE = 0.2;
+  const SPAWN_INTERVAL_MS = 750;
+  const MIN_HIDE_TIME = 700;
+  const MAX_HIDE_TIME = 1100;
+
+  let score = 0;
+  let timeLeft = GAME_TIME;
+  let gameActive = false;
+  let timerInterval = null;
+  let spawnInterval = null;
+  let currentMole = null;
+  let hideTimeout = null;
+
+  const scoreEl = document.getElementById('scoreDisplay');
+  const timerEl = document.getElementById('timerDisplay');
+  const messageEl = document.getElementById('messageText');
+  const startBtn = document.getElementById('startBtn');
+  const gridContainer = document.getElementById('gridContainer');
+  const gameWrapper = document.getElementById('gameWrapper');
+
+  // Create 3x3 grid
+  const cells = [];
+  for (let i = 0; i < GRID_SIZE; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.index = i;
+
+    const img = document.createElement('img');
+    img.alt = 'target';
+    cell.appendChild(img);
+
+    cell.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (!gameActive || !currentMole) return;
+      const idx = parseInt(cell.dataset.index);
+      if (currentMole.index === idx) {
+        handleHit(idx);
+      }
+    });
+
+    gridContainer.appendChild(cell);
+    cells.push({ el: cell, img: img });
+  }
+
+  function clearCurrentMole() {
+    if (currentMole !== null) {
+      const { index } = currentMole;
+      cells[index].el.classList.remove('active', 'seal', 'bomb');
+      cells[index].img.src = '';
+      currentMole = null;
+    }
+    if (hideTimeout) {
+      clearTimeout(hideTimeout);
+      hideTimeout = null;
+    }
+  }
+
+  function spawnMole() {
+    if (!gameActive) return;
+    clearCurrentMole();
+
+    const index = Math.floor(Math.random() * GRID_SIZE);
+    const isBomb = Math.random() < BOMB_CHANCE;
+    const type = isBomb ? 'bomb' : 'seal';
+    const imageUrl = isBomb ? BOMB_IMAGE_URL : SEAL_IMAGE_URL;
+
+    const cellObj = cells[index];
+    cellObj.el.classList.add('active', type);
+    cellObj.img.src = imageUrl;
+    currentMole = { index, type };
+
+    const duration = MIN_HIDE_TIME + Math.random() * (MAX_HIDE_TIME - MIN_HIDE_TIME);
+    hideTimeout = setTimeout(() => {
+      if (currentMole && currentMole.index === index) {
+        clearCurrentMole();
+      }
+    }, duration);
+  }
+
+  function handleHit(index) {
+    if (!currentMole || currentMole.index !== index || !gameActive) return;
+
+    if (currentMole.type === 'seal') {
+      score++;
+      scoreEl.textContent = score;
+      if (navigator.vibrate) navigator.vibrate(30);
+      clearCurrentMole();
+    } else {
+      gameActive = false;
+      clearInterval(timerInterval);
+      clearInterval(spawnInterval);
+      clearCurrentMole();
+      if (navigator.vibrate) navigator.vibrate(300);
+      gameWrapper.classList.add('shake');
+      setTimeout(() => gameWrapper.classList.remove('shake'), 500);
+
+      messageEl.textContent = '💥 BOOM! The bomb exploded! Game Over.';
+      startBtn.style.display = 'block';
+
+      setTimeout(() => {
+        saveScore(score);
+        showLeaderboard();
+      }, 1000);
+    }
+  }
+
+  function startGame() {
+    score = 0;
+    timeLeft = GAME_TIME;
+    gameActive = true;
+    scoreEl.textContent = '0';
+    timerEl.textContent = timeLeft;
+    messageEl.textContent = '❄️ Hunt the seals! Watch out for bombs!';
+    startBtn.style.display = 'none';
+    clearCurrentMole();
+
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      timerEl.textContent = timeLeft;
+      if (timeLeft <= 0) endGame(false);
+    }, 1000);
+
+    clearInterval(spawnInterval);
+    spawnInterval = setInterval(spawnMole, SPAWN_INTERVAL_MS);
+    spawnMole();
+  }
+
+  function endGame(byBomb = false) {
+    gameActive = false;
+    clearInterval(timerInterval);
+    clearInterval(spawnInterval);
+    clearCurrentMole();
+    startBtn.style.display = 'block';
+
+    if (!byBomb) {
+      messageEl.textContent = `⏰ Time's up! You caught ${score} seals!`;
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    }
+
+    saveScore(score);
+    setTimeout(() => showLeaderboard(), 600);
+  }
+
+  // ====== LEADERBOARD ======
+  const LEADERBOARD_KEY = 'polarseal_leaderboard';
+
+  function defaultData() {
+    return [
+      { name: '🐧 IceKing', score: 52, date: '2025-05-10' },
+      { name: '🐻‍❄️ Frosty', score: 44, date: '2025-05-09' },
+      { name: '🦭 ArcticFox', score: 39, date: '2025-05-11' },
+      { name: '🐟 Narwhal', score: 33, date: '2025-05-08' },
+      { name: '🦈 Glacier', score: 28, date: '2025-05-12' }
+    ];
+  }
+
+  function loadLeaderboard() {
+    const data = localStorage.getItem(LEADERBOARD_KEY);
+    return data ? JSON.parse(data) : defaultData();
+  }
+
+  function saveLeaderboard(list) {
+    localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(list));
+  }
+
+  function saveScore(newScore) {
+    const list = loadLeaderboard();
+    list.push({
+      name: currentUser.name,
+      score: newScore,
+      date: new Date().toISOString().slice(0, 10)
+    });
+    list.sort((a, b) => b.score - a.score);
+    saveLeaderboard(list.slice(0, 20));
+  }
+
+  function renderLeaderboard() {
+    const list = loadLeaderboard().slice(0, 10);
+    const tbody = document.getElementById('leaderboardBody');
+    tbody.innerHTML = '';
+    list.forEach((entry, i) => {
+      const rank = i + 1;
+      const tr = document.createElement('tr');
+      if (entry.name === currentUser.name && entry.score === score) {
+        tr.classList.add('highlight');
+      }
+      let medal = '';
+      if (rank === 1) medal = '🥇';
+      else if (rank === 2) medal = '🥈';
+      else if (rank === 3) medal = '🥉';
+      else medal = rank;
+      tr.innerHTML = `<td>${medal}</td><td>${entry.name}</td><td><strong>${entry.score}</strong></td><td>${entry.date}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function showLeaderboard() {
+    renderLeaderboard();
+    document.getElementById('leaderboardModal').style.display = 'flex';
+  }
+
+  function hideLeaderboard() {
+    document.getElementById('leaderboardModal').style.display = 'none';
+  }
+
+  document.getElementById('leaderboardBtn').addEventListener('click', showLeaderboard);
+  document.getElementById('closeModalBtn').addEventListener('click', hideLeaderboard);
+  document.getElementById('leaderboardModal').addEventListener('click', function(e) {
+    if (e.target === this) hideLeaderboard();
+  });
+
+  startBtn.addEventListener('click', startGame);
+
+  document.body.addEventListener('touchstart', (e) => {
+    if (e.target.closest('.cell')) e.preventDefault();
+  }, { passive: false });
+
+  messageEl.textContent = 'Press "START HUNTING" to begin!';
+</script>
+</body>
+</html>
